@@ -500,6 +500,13 @@
     }
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
+
+    .upload-box.paste-ready{
+      outline:3px solid var(--yellow, #f3bd38);
+      outline-offset:4px;
+      transform:translateY(-2px);
+    }
+
     @media(max-width:520px){
       .home-title{font-size:48px}
       .main-choice{min-height:230px;padding:68px 18px 40px}
@@ -573,10 +580,10 @@
     </div>
 
     <input id="imageInput" type="file" accept="image/*" multiple hidden>
-    <div id="uploadBox" class="upload-box" onclick="document.getElementById('imageInput').click()">
+        <div id="uploadBox" class="upload-box" tabindex="0" onclick="document.getElementById('imageInput').click()">
       <div class="plus">＋</div>
-      <p>포켓에 사진 넣기</p>
-      <small>캡처와 사진을 여러 장 담을 수 있어요.</small>
+      <p>사진 또는 캡처 추가</p>
+      <small>파일 선택 · 드래그앤드롭 · Ctrl+V 붙여넣기</small>
     </div>
 
     <div class="field">
@@ -660,24 +667,10 @@
   }
 
   document.getElementById('imageInput').addEventListener('change', async (e) => {
-    selectedFiles = Array.from(e.target.files || []);
-    const uploadBox = document.getElementById('uploadBox');
-    const saveBtn = document.getElementById('saveBtn');
-
-    if(!selectedFiles.length){
-      uploadBox.innerHTML = '<div class="plus">＋</div><p>포켓에 사진 넣기</p><small>캡처와 사진을 여러 장 담을 수 있어요.</small>';
-      saveBtn.disabled = true;
-      return;
-    }
-
-    const previews = await Promise.all(selectedFiles.slice(0,9).map(fileToDataURL));
-    uploadBox.innerHTML = `
-      <div class="upload-preview">
-        ${previews.map(src => `<img src="${src}" alt="미리보기">`).join('')}
-      </div>
-      <small style="margin-top:14px">${selectedFiles.length}장 선택됨 · 눌러서 다시 선택</small>
-    `;
-    saveBtn.disabled = false;
+    const incoming = Array.from(e.target.files || []);
+    selectedFiles = [...selectedFiles, ...incoming];
+    e.target.value = '';
+    await renderSelectedPreviews();
   });
 
   function fileToDataURL(file){
@@ -688,6 +681,84 @@
       reader.readAsDataURL(file);
     });
   }
+
+
+  function addFilesToSelection(files){
+    const imageFiles = Array.from(files || []).filter(file =>
+      file && file.type && file.type.startsWith('image/')
+    );
+    if(!imageFiles.length) return false;
+
+    selectedFiles = [...selectedFiles, ...imageFiles];
+    renderSelectedPreviews();
+    toast(`${imageFiles.length}개의 이미지를 붙여넣었어요.`);
+    return true;
+  }
+
+  async function renderSelectedPreviews(){
+    const uploadBox = document.getElementById('uploadBox');
+    const saveBtn = document.getElementById('saveBtn');
+
+    if(!selectedFiles.length){
+      uploadBox.innerHTML = '<div class="plus">＋</div><p>사진 또는 캡처 추가</p><small>파일 선택 · 드래그앤드롭 · Ctrl+V 붙여넣기</small>';
+      saveBtn.disabled = true;
+      return;
+    }
+
+    const previews = await Promise.all(selectedFiles.slice(0,9).map(fileToDataURL));
+    uploadBox.innerHTML = `
+      <div class="upload-preview">
+        ${previews.map(src => `<img src="${src}" alt="미리보기">`).join('')}
+      </div>
+      <small style="margin-top:14px">${selectedFiles.length}장 준비됨 · 추가로 Ctrl+V 가능</small>
+    `;
+    saveBtn.disabled = false;
+  }
+
+  document.addEventListener('paste', (event) => {
+    const registerScreen = document.getElementById('register');
+    if(!registerScreen.classList.contains('active')) return;
+
+    const items = Array.from(event.clipboardData?.items || []);
+    const imageFiles = items
+      .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
+      .map(item => item.getAsFile())
+      .filter(Boolean);
+
+    if(imageFiles.length){
+      event.preventDefault();
+      addFilesToSelection(imageFiles);
+      return;
+    }
+
+    const text = event.clipboardData?.getData('text/plain')?.trim();
+    if(text && document.activeElement?.id !== 'memoInput'){
+      event.preventDefault();
+      const memo = document.getElementById('memoInput');
+      memo.value = memo.value ? `${memo.value}\n${text}` : text;
+      toast('복사한 문구를 메모에 붙여넣었어요.');
+    }
+  });
+
+  const uploadBoxElement = document.getElementById('uploadBox');
+
+  ['dragenter','dragover'].forEach(type => {
+    uploadBoxElement.addEventListener(type, (event) => {
+      event.preventDefault();
+      uploadBoxElement.classList.add('paste-ready');
+    });
+  });
+
+  ['dragleave','drop'].forEach(type => {
+    uploadBoxElement.addEventListener(type, (event) => {
+      event.preventDefault();
+      uploadBoxElement.classList.remove('paste-ready');
+    });
+  });
+
+  uploadBoxElement.addEventListener('drop', (event) => {
+    addFilesToSelection(event.dataTransfer?.files);
+  });
 
   async function saveIdeas(){
     if(!selectedFiles.length) return;

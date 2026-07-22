@@ -1,4 +1,4 @@
-const CACHE_NAME = 'idea-pocket-v1';
+const CACHE_NAME = 'idea-pocket-v2';
 const APP_SHELL = [
   './',
   './index.html',
