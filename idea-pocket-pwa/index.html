@@ -507,6 +507,112 @@
       transform:translateY(-2px);
     }
 
+
+    .auth-shell{
+      min-height:100vh;
+      padding:34px 22px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .auth-card{
+      width:min(100%,440px);
+      padding:28px 22px;
+      border:1px solid rgba(255,255,255,.24);
+      border-radius:28px;
+      background:rgba(8,25,40,.66);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(14px);
+    }
+    .auth-card h1{
+      margin:0 0 8px;
+      font-size:36px;
+      letter-spacing:-.05em;
+    }
+    .auth-card p{
+      margin:0 0 24px;
+      color:var(--muted);
+      line-height:1.55;
+    }
+    .auth-field{margin-top:14px}
+    .auth-field label{
+      display:block;
+      margin-bottom:7px;
+      color:var(--yellow);
+      font-size:12px;
+      font-weight:900;
+    }
+    .auth-field input{
+      width:100%;
+      height:50px;
+      padding:0 15px;
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:14px;
+      outline:none;
+      color:#fff;
+      background:rgba(3,15,27,.55);
+    }
+    .auth-field input:focus{border-color:var(--yellow)}
+    .auth-actions{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+      margin-top:20px;
+    }
+    .auth-btn{
+      min-height:50px;
+      border:0;
+      border-radius:15px;
+      font-weight:900;
+    }
+    .auth-btn.primary{background:var(--yellow);color:#112b43}
+    .auth-btn.secondary{
+      background:rgba(255,255,255,.10);
+      color:#fff;
+      border:1px solid rgba(255,255,255,.22);
+    }
+    .auth-note{
+      margin-top:14px !important;
+      font-size:12px;
+    }
+    .user-bar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin:0 0 18px;
+      padding:10px 12px;
+      border:1px solid rgba(255,255,255,.20);
+      border-radius:14px;
+      background:rgba(8,25,40,.42);
+      color:var(--muted);
+      font-size:11px;
+    }
+    .logout-btn{
+      border:0;
+      border-radius:999px;
+      padding:8px 11px;
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      font-size:11px;
+      font-weight:900;
+    }
+    .sync-indicator{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      color:var(--yellow);
+      font-weight:900;
+    }
+    .sync-indicator::before{
+      content:"";
+      width:7px;
+      height:7px;
+      border-radius:50%;
+      background:currentColor;
+    }
+    .app[hidden], .auth-shell[hidden]{display:none !important}
+
     @media(max-width:520px){
       .home-title{font-size:48px}
       .main-choice{min-height:230px;padding:68px 18px 40px}
@@ -534,9 +640,50 @@
   <meta name="apple-mobile-web-app-title" content="Idea Pocket">
   <meta name="mobile-web-app-capable" content="yes">
 
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Idea Pocket">
+  <meta name="mobile-web-app-capable" content="yes">
+
 </head>
 <body>
-<div class="app">
+
+<div id="authShell" class="auth-shell">
+  <div class="auth-card">
+    <div class="brand">● HONGSAE'S IDEA POCKET</div>
+    <div class="user-bar">
+      <span><span class="sync-indicator">클라우드 동기화</span><br><span id="userEmail"></span></span>
+      <button class="logout-btn" onclick="signOut()">로그아웃</button>
+    </div>
+
+    <h1>Idea Pocket</h1>
+    <p>같은 계정으로 로그인하면 PC와 갤럭시에서 동일한 아이디어를 볼 수 있어요.</p>
+
+    <div class="auth-field">
+      <label for="authEmail">이메일</label>
+      <input id="authEmail" type="email" autocomplete="email" placeholder="example@email.com">
+    </div>
+
+    <div class="auth-field">
+      <label for="authPassword">비밀번호</label>
+      <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상">
+    </div>
+
+    <div class="auth-actions">
+      <button class="auth-btn primary" onclick="signIn()">로그인</button>
+      <button class="auth-btn secondary" onclick="signUp()">회원가입</button>
+    </div>
+
+    <p class="auth-note">회원가입 후 인증 메일이 오면 링크를 누른 뒤 로그인하세요.</p>
+  </div>
+</div>
+
+<div id="mainApp" class="app" hidden>
+
   <section id="home" class="screen active">
     <div class="brand">● HONGSAE'S IDEA POCKET</div>
 
@@ -632,8 +779,15 @@
 
 <div id="toast" class="toast"></div>
 
+
 <script>
-  const STORAGE_KEY = 'ideaArchive.items.v1';
+  const SUPABASE_URL = "https://wbadtdruddmmuclwtvjd.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_3cmtKnBndg_IAyO1jNRp5Q_CwAG5B5I";
+  const BUCKET_NAME = "IDEAS";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
+  let itemsCache = [];
   let selectedFiles = [];
   let currentQueue = [];
   let currentIndex = 0;
@@ -644,20 +798,123 @@
     unsorted: '미분류',
     selected: '선택',
     hold: '보류',
-    used: '사용 완료',
-    excluded: '제외'
+    used: '사용 완료'
   };
 
-  function getItems(){
-    try{
-      return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    }catch(e){
-      return [];
+  async function initApp(){
+    const { data: { session } } = await sb.auth.getSession();
+    await handleSession(session);
+
+    sb.auth.onAuthStateChange(async (_event, session) => {
+      await handleSession(session);
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(console.warn);
+      });
+    }
+
+    applyLaunchMode();
+  }
+
+  async function handleSession(session){
+    currentUser = session?.user || null;
+    document.getElementById('authShell').hidden = !!currentUser;
+    document.getElementById('mainApp').hidden = !currentUser;
+
+    if(currentUser){
+      document.getElementById('userEmail').textContent = currentUser.email || '';
+      await refreshIdeas();
+    } else {
+      itemsCache = [];
     }
   }
 
-  function setItems(items){
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  async function signUp(){
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+
+    if(!email || password.length < 6){
+      alert('이메일과 6자 이상의 비밀번호를 입력하세요.');
+      return;
+    }
+
+    const { error } = await sb.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: 'https://idea-pocket-three.vercel.app/'
+      }
+    });
+
+    if(error){
+      alert(`회원가입 실패: ${error.message}`);
+      return;
+    }
+
+    alert('인증 메일을 보냈어요. 메일의 인증 링크를 누른 뒤 로그인하세요.');
+  }
+
+  async function signIn(){
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error){
+      alert(`로그인 실패: ${error.message}`);
+      return;
+    }
+
+    toast('로그인했어요.');
+  }
+
+  async function signOut(){
+    await sb.auth.signOut();
+    showScreen('home');
+  }
+
+  async function refreshIdeas(){
+    if(!currentUser) return;
+
+    const { data, error } = await sb
+      .from('ideas')
+      .select('*')
+      .order('created_at', { ascending:false });
+
+    if(error){
+      console.error(error);
+      alert(`아이디어 불러오기 실패: ${error.message}`);
+      return;
+    }
+
+    itemsCache = await Promise.all((data || []).map(async row => {
+      const path = row.image_url || row.image_path || '';
+      let image = '';
+
+      if(path){
+        const { data: signed } = await sb.storage
+          .from(BUCKET_NAME)
+          .createSignedUrl(path, 60 * 60);
+
+        image = signed?.signedUrl || '';
+      }
+
+      return {
+        id: row.id,
+        image,
+        imagePath: path,
+        memo: row.memo || '',
+        createdAt: new Date(row.created_at).getTime(),
+        status: row.status || 'unsorted'
+      };
+    }));
+
+    if(document.getElementById('archive').classList.contains('active')) renderArchive();
+  }
+
+  function getItems(){
+    return itemsCache;
   }
 
   function showScreen(id){
@@ -682,11 +939,11 @@
     });
   }
 
-
   function addFilesToSelection(files){
     const imageFiles = Array.from(files || []).filter(file =>
       file && file.type && file.type.startsWith('image/')
     );
+
     if(!imageFiles.length) return false;
 
     selectedFiles = [...selectedFiles, ...imageFiles];
@@ -719,8 +976,8 @@
     const registerScreen = document.getElementById('register');
     if(!registerScreen.classList.contains('active')) return;
 
-    const items = Array.from(event.clipboardData?.items || []);
-    const imageFiles = items
+    const clipboardItems = Array.from(event.clipboardData?.items || []);
+    const imageFiles = clipboardItems
       .filter(item => item.kind === 'file' && item.type.startsWith('image/'))
       .map(item => item.getAsFile())
       .filter(Boolean);
@@ -735,7 +992,8 @@
     if(text && document.activeElement?.id !== 'memoInput'){
       event.preventDefault();
       const memo = document.getElementById('memoInput');
-      memo.value = memo.value ? `${memo.value}\n${text}` : text;
+      memo.value = memo.value ? `${memo.value}
+${text}` : text;
       toast('복사한 문구를 메모에 붙여넣었어요.');
     }
   });
@@ -760,40 +1018,83 @@
     addFilesToSelection(event.dataTransfer?.files);
   });
 
+  function safeExtension(file){
+    const fromName = file.name?.split('.').pop()?.toLowerCase();
+    if(fromName && /^[a-z0-9]+$/.test(fromName)) return fromName;
+    return (file.type.split('/')[1] || 'png').replace('jpeg','jpg');
+  }
+
   async function saveIdeas(){
-    if(!selectedFiles.length) return;
+    if(!currentUser || !selectedFiles.length) return;
+
     const memo = document.getElementById('memoInput').value.trim();
-    const items = getItems();
-    const now = Date.now();
+    const saveBtn = document.getElementById('saveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '저장 중...';
+
+    let savedCount = 0;
 
     try{
-      const images = await Promise.all(selectedFiles.map(fileToDataURL));
-      images.forEach((image, i) => {
-        items.push({
-          id: crypto.randomUUID ? crypto.randomUUID() : `${now}-${i}-${Math.random()}`,
-          image,
+      for(const file of selectedFiles){
+        const id = crypto.randomUUID();
+        const path = `${currentUser.id}/${id}.${safeExtension(file)}`;
+
+        const { error: uploadError } = await sb.storage
+          .from(BUCKET_NAME)
+          .upload(path, file, {
+            cacheControl:'3600',
+            upsert:false,
+            contentType:file.type
+          });
+
+        if(uploadError) throw uploadError;
+
+        const row = {
+          id,
+          user_id: currentUser.id,
           memo,
-          createdAt: now + i,
+          image_url: path,
+          idea_type:'image',
           status:'unsorted'
-        });
-      });
-      setItems(items);
+        };
+
+        let { error: insertError } = await sb.from('ideas').insert(row);
+
+        if(insertError && /image_url/i.test(insertError.message)){
+          delete row.image_url;
+          row.image_path = path;
+          ({ error: insertError } = await sb.from('ideas').insert(row));
+        }
+
+        if(insertError){
+          await sb.storage.from(BUCKET_NAME).remove([path]);
+          throw insertError;
+        }
+
+        savedCount++;
+      }
+
       selectedFiles = [];
       document.getElementById('imageInput').value = '';
       document.getElementById('memoInput').value = '';
-      document.getElementById('saveBtn').disabled = true;
-      document.getElementById('uploadBox').innerHTML = '<div class="plus">＋</div><p>포켓에 사진 넣기</p><small>캡처와 사진을 여러 장 담을 수 있어요.</small>';
-      toast(`${images.length}개의 아이디어를 저장했어요.`);
-      setTimeout(()=>showScreen('home'), 500);
-    }catch(e){
-      alert('이미지 저장에 실패했습니다. 너무 많은 고용량 이미지는 브라우저 저장 한도를 초과할 수 있어요.');
+      await renderSelectedPreviews();
+      await refreshIdeas();
+      toast(`${savedCount}개의 아이디어를 클라우드에 저장했어요.`);
+      setTimeout(() => showScreen('home'), 450);
+    }catch(error){
+      console.error(error);
+      alert(`저장 실패: ${error.message || error}`);
+    }finally{
+      saveBtn.textContent = '아이디어 저장';
+      saveBtn.disabled = selectedFiles.length === 0;
     }
   }
 
-  function openFinder(){
+  async function openFinder(){
+    await refreshIdeas();
     currentQueue = getItems()
       .filter(item => item.status === 'unsorted')
-      .sort((a,b)=>b.createdAt-a.createdAt);
+      .sort((a,b) => b.createdAt - a.createdAt);
     currentIndex = 0;
     historyStack = [];
     showScreen('finder');
@@ -826,8 +1127,7 @@
       ${buildCard(current, false)}
     `;
 
-    const topCard = deck.querySelector('.card:not(.next)');
-    attachSwipe(topCard);
+    attachSwipe(deck.querySelector('.card:not(.next)'));
   }
 
   function buildCard(item, isNext){
@@ -849,28 +1149,25 @@
 
     const down = (e) => {
       dragging = true;
-      const p = e.touches ? e.touches[0] : e;
-      startX = p.clientX;
-      startY = p.clientY;
+      startX = e.clientX;
+      startY = e.clientY;
+      card.setPointerCapture?.(e.pointerId);
       card.style.transition = 'none';
     };
 
     const move = (e) => {
       if(!dragging) return;
-      const p = e.touches ? e.touches[0] : e;
-      dx = p.clientX-startX;
-      dy = p.clientY-startY;
-
+      dx = e.clientX-startX;
+      dy = e.clientY-startY;
       card.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx*0.04}deg)`;
 
       const ax=Math.abs(dx), ay=Math.abs(dy);
       card.querySelectorAll('.stamp').forEach(s=>s.style.opacity=0);
+
       if(ax>ay){
-        const el = card.querySelector(dx>0?'.right':'.left');
-        el.style.opacity = Math.min(ax/100,1);
+        card.querySelector(dx>0?'.right':'.left').style.opacity = Math.min(ax/100,1);
       }else if(dy<0){
-        const el = card.querySelector('.up');
-        el.style.opacity = Math.min(ay/100,1);
+        card.querySelector('.up').style.opacity = Math.min(ay/100,1);
       }
     };
 
@@ -883,19 +1180,12 @@
       const ax=Math.abs(dx), ay=Math.abs(dy);
 
       if(Math.max(ax,ay)>threshold){
-        if(ax>ay){
-          completeSwipe(card, dx>0?'selected':'hold');
-        }else if(dy<0){
-          completeSwipe(card, 'used');
-        }else{
-          card.style.transform='';
-          card.querySelectorAll('.stamp').forEach(s=>s.style.opacity=0);
-        }
-      }else{
-        card.style.transform='';
-        card.querySelectorAll('.stamp').forEach(s=>s.style.opacity=0);
-      }
-      dx=0;dy=0;
+        if(ax>ay) completeSwipe(card, dx>0?'selected':'hold');
+        else if(dy<0) completeSwipe(card, 'used');
+        else resetCard(card);
+      }else resetCard(card);
+
+      dx=0; dy=0;
     };
 
     card.addEventListener('pointerdown',down);
@@ -904,13 +1194,36 @@
     card.addEventListener('pointercancel',up);
   }
 
+  function resetCard(card){
+    card.style.transform='';
+    card.querySelectorAll('.stamp').forEach(s=>s.style.opacity=0);
+  }
+
   function act(status){
     const card = document.querySelector('#deck .card:not(.next)');
     if(!card || currentIndex>=currentQueue.length) return;
     completeSwipe(card,status);
   }
 
-  function completeSwipe(card,status){
+  async function completeSwipe(card,status){
+    const item = currentQueue[currentIndex];
+
+    const { error } = await sb
+      .from('ideas')
+      .update({ status })
+      .eq('id', item.id);
+
+    if(error){
+      resetCard(card);
+      alert(`상태 변경 실패: ${error.message}`);
+      return;
+    }
+
+    historyStack.push({id:item.id, previousStatus:item.status});
+    item.status = status;
+    const cached = itemsCache.find(x => x.id === item.id);
+    if(cached) cached.status = status;
+
     const transforms = {
       selected:'translate(140%, 0) rotate(18deg)',
       used:'translate(0, -140%) rotate(4deg)',
@@ -921,59 +1234,65 @@
     card.style.transform=transforms[status];
     card.style.opacity='0';
 
-    const item = currentQueue[currentIndex];
-    const items = getItems();
-    const target = items.find(x=>x.id===item.id);
-    if(target){
-      historyStack.push({id:item.id, previousStatus:target.status});
-      target.status=status;
-      setItems(items);
-    }
-
     setTimeout(()=>{
       currentIndex++;
       renderDeck();
     },220);
   }
 
-  function undoLast(){
+  async function undoLast(){
     const last = historyStack.pop();
     if(!last) return;
 
-    const items = getItems();
-    const target = items.find(x=>x.id===last.id);
-    if(target){
-      target.status=last.previousStatus;
-      setItems(items);
+    const { error } = await sb
+      .from('ideas')
+      .update({status:last.previousStatus})
+      .eq('id',last.id);
+
+    if(error){
+      alert(`되돌리기 실패: ${error.message}`);
+      return;
     }
+
+    const target=itemsCache.find(x=>x.id===last.id);
+    if(target) target.status=last.previousStatus;
     currentIndex=Math.max(0,currentIndex-1);
     renderDeck();
     toast('방금 분류한 카드를 되돌렸어요.');
   }
 
-  function resetAllToUnsorted(){
+  async function resetAllToUnsorted(){
     if(!confirm('모든 아이디어를 다시 미분류 상태로 돌릴까요?')) return;
-    const items=getItems().map(item=>({...item,status:'unsorted'}));
-    setItems(items);
-    openFinder();
+
+    const { error } = await sb
+      .from('ideas')
+      .update({status:'unsorted'})
+      .eq('user_id',currentUser.id);
+
+    if(error){
+      alert(`초기화 실패: ${error.message}`);
+      return;
+    }
+
+    await openFinder();
     toast('모든 아이디어를 다시 볼 수 있어요.');
   }
 
-  function openArchive(){
+  async function openArchive(){
+    await refreshIdeas();
     showScreen('archive');
     activeArchiveStatus='all';
     renderArchive();
   }
 
   function renderArchive(){
-    const items = getItems().sort((a,b)=>b.createdAt-a.createdAt);
+    const items = [...getItems()].sort((a,b)=>b.createdAt-a.createdAt);
     const tabs = [
       ['all','전체'],
       ['unsorted','미분류'],
       ['selected','선택'],
       ['hold','보류'],
-      ['used','사용 완료'],
-      ['excluded','제외']
+      ['used','사용 완료']
     ];
 
     document.getElementById('archiveTabs').innerHTML = tabs.map(([key,label])=>{
@@ -1007,27 +1326,56 @@
     renderArchive();
   }
 
-  function changeStatus(id,status){
-    const items=getItems();
-    const target=items.find(x=>x.id===id);
-    if(target){
-      target.status=status;
-      setItems(items);
-      renderArchive();
-      toast('아이디어 상태를 변경했어요.');
+  async function changeStatus(id,status){
+    const { error } = await sb.from('ideas').update({status}).eq('id',id);
+    if(error){
+      alert(`상태 변경 실패: ${error.message}`);
+      return;
     }
+
+    const target=itemsCache.find(x=>x.id===id);
+    if(target) target.status=status;
+    renderArchive();
+    toast('아이디어 상태를 변경했어요.');
   }
 
-  function deleteItem(id){
+  async function deleteItem(id){
     if(!confirm('이 아이디어를 삭제할까요?')) return;
-    setItems(getItems().filter(x=>x.id!==id));
+
+    const target=itemsCache.find(x=>x.id===id);
+    if(!target) return;
+
+    const { error: deleteError } = await sb.from('ideas').delete().eq('id',id);
+    if(deleteError){
+      alert(`삭제 실패: ${deleteError.message}`);
+      return;
+    }
+
+    if(target.imagePath){
+      await sb.storage.from(BUCKET_NAME).remove([target.imagePath]);
+    }
+
+    itemsCache = itemsCache.filter(x=>x.id!==id);
     renderArchive();
     toast('아이디어를 삭제했어요.');
   }
 
-  function clearAllData(){
+  async function clearAllData(){
     if(!confirm('저장된 모든 아이디어를 삭제할까요? 이 작업은 되돌릴 수 없습니다.')) return;
-    localStorage.removeItem(STORAGE_KEY);
+
+    const paths = itemsCache.map(x=>x.imagePath).filter(Boolean);
+    const { error } = await sb.from('ideas').delete().eq('user_id',currentUser.id);
+
+    if(error){
+      alert(`전체 삭제 실패: ${error.message}`);
+      return;
+    }
+
+    if(paths.length){
+      await sb.storage.from(BUCKET_NAME).remove(paths);
+    }
+
+    itemsCache=[];
     renderArchive();
     toast('모든 아이디어를 삭제했어요.');
   }
@@ -1043,15 +1391,27 @@
     }[m]));
   }
 
-  let toastTimer;
   function toast(message){
     const el=document.getElementById('toast');
     el.textContent=message;
     el.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer=setTimeout(()=>el.classList.remove('show'),1800);
+    clearTimeout(window.__toastTimer);
+    window.__toastTimer=setTimeout(()=>el.classList.remove('show'),1800);
   }
+
+  function applyLaunchMode(){
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('mode') === 'register' && currentUser){
+      showScreen('register');
+      setTimeout(() => document.getElementById('uploadBox')?.focus(), 100);
+    } else if(params.get('mode') === 'finder' && currentUser){
+      openFinder();
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', initApp);
 </script>
+
 
 <script>
   let deferredInstallPrompt = null;
